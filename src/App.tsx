@@ -1,7 +1,8 @@
-import "./App.css";
+import { ContractViewer } from "./components/ContractViewer";
+import { sampleContract } from "./data/sampleContract";
 
 function App() {
-  return <>Hello</>;
+  return <ContractViewer contract={sampleContract} />;
 }
 
 export default App;
