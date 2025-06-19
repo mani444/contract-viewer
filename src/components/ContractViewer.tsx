@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
 import { DocumentPreview } from "./DocumentPreview";
 import { ClausesList } from "./ClausesList";
-import type { ContractViewerProps } from "@/types/components";
+import { ContractHeader } from "./ContractHeader";
+// import { LoadingOverlay } from "./LoadingOverlay";
+import { Layout, TwoColumnLayout, MainContent, Sidebar } from "./Layout";
+import type { ContractViewerProps } from "@/types";
 
 export function ContractViewer({ contract }: ContractViewerProps) {
   const [highlightedClause, setHighlightedClause] = useState<
@@ -53,42 +56,31 @@ export function ContractViewer({ contract }: ContractViewerProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-            {contract.document_title}
-          </h1>
-          <p className="text-gray-600 dark:text-gray-300 mt-2">
-            Effective Date: {contract.effective_date} •{" "}
-            {contract.parties.length} parties • {contract.clauses.length}{" "}
-            clauses
-          </p>
-        </div>
+    <Layout>
+      {/* Header */}
+      <ContractHeader contract={contract} />
 
-        {/* Split Screen Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-200px)]">
-          {/* Left Side - Document Preview */}
-          <div className="order-2 lg:order-1">
-            <DocumentPreview
-              contract={contract}
-              highlightedClause={highlightedClause}
-              onTextSelect={handleTextSelect}
-              pdfFile={pdfFile}
-            />
-          </div>
+      {/* Split Screen Layout */}
+      <TwoColumnLayout>
+        {/* Left Side - Document Preview */}
+        <MainContent>
+          <DocumentPreview
+            contract={contract}
+            highlightedClause={highlightedClause}
+            onTextSelect={handleTextSelect}
+            pdfFile={pdfFile}
+          />
+        </MainContent>
 
-          {/* Right Side - Clauses List */}
-          <div className="order-1 lg:order-2">
-            <ClausesList
-              contract={contract}
-              onClauseClick={handleClauseClick}
-              highlightedClause={highlightedClause}
-            />
-          </div>
-        </div>
-      </div>
-    </div>
+        {/* Right Side - Clauses List */}
+        <Sidebar>
+          <ClausesList
+            contract={contract}
+            onClauseClick={handleClauseClick}
+            highlightedClause={highlightedClause}
+          />
+        </Sidebar>
+      </TwoColumnLayout>
+    </Layout>
   );
 }

@@ -160,7 +160,7 @@ export function DocumentPreview({
         <CardTitle className="text-lg">PDF Document Viewer</CardTitle>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="h-[calc(100vh-200px)] flex flex-col">
+        <div className="h-[calc(100vh-230px)] flex flex-col">
           {/* PDF Controls */}
           <div className="flex items-center justify-between p-4 border-b">
             <div className="flex items-center gap-2">

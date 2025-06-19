@@ -47,7 +47,7 @@ export function ClausesList({
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0">
-        <ScrollArea className="h-[calc(100vh-200px)] px-6 pb-6">
+        <ScrollArea className="h-[calc(100vh-230px)] px-6 pb-6">
           <Accordion type="multiple" className="space-y-2">
             {contract.clauses.map((clause, index) => {
               const clauseId = getClauseId(index);

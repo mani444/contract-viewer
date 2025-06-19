@@ -13,9 +13,3 @@ export interface ClausesListProps {
   onClauseClick: (clauseId: string) => void;
   highlightedClause?: string;
 }
-
-export interface PdfUploaderProps {
-  onFileSelect: (file: ArrayBuffer) => void;
-  onLoadSample?: () => void;
-  className?: string;
-}
