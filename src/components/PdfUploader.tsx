@@ -1,49 +1,53 @@
-import React, { useCallback } from 'react';
-import { Upload, FileText } from 'lucide-react';
+import React, { useCallback } from "react";
+import { Upload, FileText } from "lucide-react";
+import type { PdfUploaderProps } from "@/types/components";
 
-interface PdfUploaderProps {
-  onFileSelect: (file: ArrayBuffer) => void;
-  onLoadSample?: () => void;
-  className?: string;
-}
+export function PdfUploader({
+  onFileSelect,
+  onLoadSample,
+  className = "",
+}: PdfUploaderProps) {
+  const handleFileChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      console.log("File selected:", file);
 
-export function PdfUploader({ onFileSelect, onLoadSample, className = "" }: PdfUploaderProps) {
-  const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    console.log('File selected:', file);
-    
-    if (!file) {
-      console.log('No file selected');
-      return;
-    }
-    
-    if (file.type !== 'application/pdf') {
-      console.log('Invalid file type:', file.type);
-      alert('Please select a PDF file');
-      return;
-    }
-    
-    console.log('Reading PDF file:', file.name, file.size, 'bytes');
-    const reader = new FileReader();
-    
-    reader.onload = (e) => {
-      console.log('File read complete');
-      if (e.target?.result instanceof ArrayBuffer) {
-        console.log('ArrayBuffer size:', e.target.result.byteLength);
-        onFileSelect(e.target.result);
+      if (!file) {
+        console.log("No file selected");
+        return;
       }
-    };
-    
-    reader.onerror = (e) => {
-      console.error('Error reading file:', e);
-      alert('Error reading PDF file');
-    };
-    
-    reader.readAsArrayBuffer(file);
-  }, [onFileSelect]);
+
+      if (file.type !== "application/pdf") {
+        console.log("Invalid file type:", file.type);
+        alert("Please select a PDF file");
+        return;
+      }
+
+      console.log("Reading PDF file:", file.name, file.size, "bytes");
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        console.log("File read complete");
+        if (e.target?.result instanceof ArrayBuffer) {
+          console.log("ArrayBuffer size:", e.target.result.byteLength);
+          onFileSelect(e.target.result);
+        }
+      };
+
+      reader.onerror = (e) => {
+        console.error("Error reading file:", e);
+        alert("Error reading PDF file");
+      };
+
+      reader.readAsArrayBuffer(file);
+    },
+    [onFileSelect],
+  );
 
   return (
-    <div className={`border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 ${className}`}>
+    <div
+      className={`border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 ${className}`}
+    >
       <div className="text-center">
         <FileText className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500 mb-4" />
         <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">

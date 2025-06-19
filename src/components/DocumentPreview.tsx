@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Contract } from "@/types/contract";
+import { TextItem, TextContent, PageCallback } from "@/types/pdf";
+import type { DocumentPreviewProps } from "@/types/pdf";
 import { ChevronLeft, ChevronRight, Download } from "lucide-react";
 
 // Configure PDF.js worker - try multiple approaches for compatibility
@@ -25,35 +26,27 @@ try {
 import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 
-interface DocumentPreviewProps {
-  contract: Contract;
-  highlightedClause?: string;
-  onTextSelect?: (text: string) => void;
-  pdfFile?: string | ArrayBuffer | null;
+// Add custom CSS for highlighting
+const highlightCSS = `
+  .pdf-highlight {
+    background-color: rgba(255, 255, 0, 0.4) !important;
+    border: 2px solid #fbbf24 !important;
+    border-radius: 2px !important;
+    animation: pulse 2s infinite !important;
+  }
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+`;
+
+// Inject CSS into the document
+if (typeof document !== "undefined") {
+  const style = document.createElement("style");
+  style.textContent = highlightCSS;
+  document.head.appendChild(style);
 }
-
-// Define highlight zones for each clause (dummy coordinates for demonstration)
-const getHighlightZones = (clauseIndex: number) => {
-  const zones: {
-    [key: string]: {
-      page: number;
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-    }[];
-  } = {
-    "clause-0": [{ page: 1, x: 50, y: 200, width: 400, height: 60 }], // Scope of Services
-    "clause-1": [{ page: 1, x: 50, y: 300, width: 400, height: 80 }], // Term
-    "clause-2": [{ page: 1, x: 50, y: 420, width: 400, height: 60 }], // Compensation
-    "clause-3": [{ page: 1, x: 50, y: 520, width: 400, height: 80 }], // Confidentiality
-    "clause-4": [{ page: 1, x: 50, y: 640, width: 400, height: 40 }], // Termination
-    "clause-5": [{ page: 2, x: 50, y: 100, width: 400, height: 60 }], // Governing Law
-    "clause-6": [{ page: 2, x: 50, y: 200, width: 400, height: 60 }], // Entire Agreement
-  };
-
-  return zones[`clause-${clauseIndex}`] || [];
-};
 
 export function DocumentPreview({
   contract,
@@ -62,7 +55,7 @@ export function DocumentPreview({
 }: DocumentPreviewProps) {
   const [numPages, setNumPages] = useState<number>();
   const [pageNumber, setPageNumber] = useState<number>(1);
-  const [scale, setScale] = useState<number>(1.2);
+  const [scale] = useState<number>(1.0); // Fixed at 100%
   const [loadError, setLoadError] = useState<string | null>(null);
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }): void {
@@ -73,70 +66,98 @@ export function DocumentPreview({
 
   function onDocumentLoadError(error: Error): void {
     console.error("PDF load error:", error);
-    console.error("Error details:", {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-    });
     setLoadError(error.message);
   }
 
-  // Get highlight zones for the current highlighted clause
-  const getActiveHighlightZones = () => {
-    if (!highlightedClause) return [];
-
-    const clauseIndexMatch = highlightedClause.match(/^clause-(\d+)$/);
-    if (!clauseIndexMatch) return [];
-
-    const clauseIndex = parseInt(clauseIndexMatch[1], 10);
-    return getHighlightZones(clauseIndex);
+  // Extract text content when page loads
+  const onPageLoadSuccess = (page: PageCallback) => {
+    page
+      .getTextContent()
+      .then((content: TextContent) => {
+        const text = content.items
+          .filter((item): item is TextItem => "str" in item)
+          .map((item: TextItem) => item.str)
+          .join(" ");
+        console.log("Extracted text:", text.substring(0, 200) + "...");
+      })
+      .catch((error: Error) => {
+        console.error("Failed to extract text:", error);
+      });
   };
 
-  // Auto-scroll to page when clause is selected
-  const scrollToClause = (clauseId: string) => {
-    const clauseIndexMatch = clauseId.match(/^clause-(\d+)$/);
-    if (!clauseIndexMatch) return;
+  // Use CSS to highlight text in the PDF text layer
+  useEffect(() => {
+    // Get the text to search for based on highlighted clause
+    const getSearchText = () => {
+      if (!highlightedClause) return "";
 
-    const clauseIndex = parseInt(clauseIndexMatch[1], 10);
-    const zones = getHighlightZones(clauseIndex);
+      const clauseIndexMatch = highlightedClause.match(/^clause-(\d+)$/);
+      if (!clauseIndexMatch) return "";
 
-    if (zones.length > 0) {
-      setPageNumber(zones[0].page);
+      const clauseIndex = parseInt(clauseIndexMatch[1], 10);
+      const clause = contract.clauses[clauseIndex];
+
+      if (!clause) return "";
+
+      // Return clause number and title for search
+      if (clause.number && clause.title) {
+        return `${clause.number}. ${clause.title}`;
+      }
+      if (clause.title) {
+        return clause.title;
+      }
+      if (clause.number) {
+        return `${clause.number}.`;
+      }
+      return "";
+    };
+
+    const searchText = getSearchText();
+    if (!searchText) {
+      // Remove all highlights
+      const highlights = document.querySelectorAll(".pdf-highlight");
+      highlights.forEach((el) => el.classList.remove("pdf-highlight"));
+      return;
     }
+
+    // Add highlights to matching text
+    setTimeout(() => {
+      const textLayer = document.querySelector(".react-pdf__Page__textContent");
+      if (textLayer) {
+        const textSpans = textLayer.querySelectorAll("span");
+        textSpans.forEach((span) => {
+          const spanText = span.textContent || "";
+          if (
+            spanText.includes(searchText) ||
+            searchText.includes(spanText.trim()) ||
+            (spanText.trim().length > 2 &&
+              searchText.toLowerCase().includes(spanText.toLowerCase().trim()))
+          ) {
+            span.classList.add("pdf-highlight");
+          } else {
+            span.classList.remove("pdf-highlight");
+          }
+        });
+      }
+    }, 100);
+  }, [highlightedClause, pageNumber, contract]);
+
+  // Auto-scroll to page when clause is selected
+  const scrollToClause = () => {
+    setPageNumber(1);
   };
 
   // Effect to scroll when highlighted clause changes
   React.useEffect(() => {
     if (highlightedClause) {
-      scrollToClause(highlightedClause);
+      scrollToClause();
     }
   }, [highlightedClause]);
-
-  const highlightZones = getActiveHighlightZones();
 
   return (
     <Card className="h-full">
       <CardHeader>
-        <CardTitle className="text-lg flex items-center justify-between">
-          PDF Document Viewer
-          <div className="flex items-center gap-2 text-sm font-normal">
-            <button
-              onClick={() => setScale((prev) => Math.max(0.5, prev - 0.1))}
-              className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
-            >
-              -
-            </button>
-            <span className="min-w-[60px] text-center">
-              {Math.round(scale * 100)}%
-            </span>
-            <button
-              onClick={() => setScale((prev) => Math.min(3, prev + 0.1))}
-              className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
-            >
-              +
-            </button>
-          </div>
-        </CardTitle>
+        <CardTitle className="text-lg">PDF Document Viewer</CardTitle>
       </CardHeader>
       <CardContent className="p-0">
         <div className="h-[calc(100vh-200px)] flex flex-col">
@@ -204,6 +225,7 @@ export function DocumentPreview({
                         scale={scale}
                         renderTextLayer={true}
                         renderAnnotationLayer={true}
+                        onLoadSuccess={onPageLoadSuccess}
                         loading={
                           <div className="flex items-center justify-center h-96">
                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -211,31 +233,14 @@ export function DocumentPreview({
                         }
                       />
                     </Document>
-
-                    {/* Highlight Overlays */}
-                    {highlightZones.map(
-                      (zone, index) =>
-                        zone.page === pageNumber && (
-                          <div
-                            key={index}
-                            className="absolute bg-yellow-300/40 border-2 border-yellow-500 pointer-events-none animate-pulse"
-                            style={{
-                              left: zone.x * scale,
-                              top: zone.y * scale,
-                              width: zone.width * scale,
-                              height: zone.height * scale,
-                            }}
-                          />
-                        ),
-                    )}
                   </div>
                 )
               ) : (
                 <div className="flex flex-col items-center justify-center h-96 text-gray-500 dark:text-gray-400">
-                  <Download className="w-16 h-16 mb-4" />
-                  <p className="text-lg font-medium">No PDF Loaded</p>
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+                  <p className="text-lg font-medium">Loading Sample PDF</p>
                   <p className="text-sm">
-                    Upload a PDF file to view and highlight clauses
+                    Please wait while the contract document loads...
                   </p>
                 </div>
               )}

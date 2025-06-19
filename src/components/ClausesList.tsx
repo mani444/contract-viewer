@@ -7,13 +7,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Contract, Clause } from "@/types/contract";
-
-interface ClausesListProps {
-  contract: Contract;
-  onClauseClick: (clauseId: string) => void;
-  highlightedClause?: string;
-}
+import type { ClausesListProps, Clause } from "@/types/components";
 
 export function ClausesList({
   contract,
